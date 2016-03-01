@@ -60,7 +60,7 @@ void Settings::readAll()
         settings.setArrayIndex(i);
         QString plcName = settings.value("plcName").toString();
         QString brName = settings.value("brName").toString();
-        if((!plcName.isEmpty())&&(brName.isEmpty())) {
+        if((!plcName.isEmpty())&&(!brName.isEmpty())) {
             plcBranch.insert(plcName, brName);
         }
     }

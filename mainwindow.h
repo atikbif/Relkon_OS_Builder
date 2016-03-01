@@ -12,7 +12,6 @@ class MainWindow : public QMainWindow
 {
     Q_OBJECT
     void updateGUI(const Settings &conf);
-    void updateSettings(Settings &conf);
 public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
