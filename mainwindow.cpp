@@ -8,6 +8,9 @@
 #include <QMessageBox>
 #include <QComboBox>
 
+#include "gitmanager.h"
+#include "branchbuilder.h"
+
 
 void MainWindow::updateGUI(const Settings &conf)
 {
@@ -276,5 +279,55 @@ void MainWindow::on_pushButtonEditPLC_clicked()
 
 void MainWindow::on_pushButtonBuildAll_clicked()
 {
+    ui->textBrowserLog->clear();
+    ui->textBrowserLog->setTextColor(Qt::darkGreen);
+    GitManager git(ui->lineEditInpPath->text());
+    git.goToRepo();
+    if(git.isRepoClean()) {
+        ui->textBrowserLog->insertPlainText("The repository is clean\n\n");
+        QStringList branches = git.getBranches();
+        ui->textBrowserLog->insertPlainText("branches:\n");
+        foreach (QString branch, branches) {
+            ui->textBrowserLog->insertPlainText("   " + branch + "\n");
+        }
+        QString startRepo = git.getCurrentBranch();
+        ui->textBrowserLog->insertPlainText("Current branch: " + startRepo + "\n\n");
+        int brCount = ui->listWidgetBuild->count();
+        for(int i=0; i<brCount; i++) {
+            ui->textBrowserLog->insertPlainText("---\n");
+            QString br = ui->listWidgetBuild->item(i)->text();
+            if(git.goToBranch(br)) {
+                ui->textBrowserLog->insertPlainText("Switched to branch " + br + "\n");
 
+                BranchBuilder builder(ui->lineEditInpPath->text(),
+                                      ui->lineEditOutPath->text(), br);
+                QString res;
+                if(!builder.createBuild(res)) {
+                    ui->textBrowserLog->setTextColor(Qt::red);
+                    ui->textBrowserLog->insertPlainText(res + "\n");
+                    ui->textBrowserLog->setTextColor(Qt::darkGreen);
+                }else {
+                    ui->textBrowserLog->insertPlainText("Compile is complete\n");
+                }
+            }else {
+                ui->textBrowserLog->setTextColor(Qt::red);
+                ui->textBrowserLog->insertPlainText("Error! Cannot switch to branch " + br + "\n");
+                ui->textBrowserLog->setTextColor(Qt::darkGreen);
+            }
+            ui->textBrowserLog->insertPlainText("---\n");
+        }
+        ui->textBrowserLog->insertPlainText("\n");
+        if(git.goToBranch(startRepo)) {
+            ui->textBrowserLog->insertPlainText("Switched to start branch " + startRepo + "\n");
+        }else {
+            ui->textBrowserLog->setTextColor(Qt::red);
+            ui->textBrowserLog->insertPlainText("Error! Cannot switch to start branch " + startRepo + "\n");
+            ui->textBrowserLog->setTextColor(Qt::darkGreen);
+        }
+
+    }else {
+        ui->textBrowserLog->setTextColor(Qt::red);
+        ui->textBrowserLog->insertPlainText("You should clean the repository (git stash)");
+        ui->textBrowserLog->setTextColor(Qt::darkGreen);
+    }
 }

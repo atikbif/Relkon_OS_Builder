@@ -14,9 +14,13 @@ TEMPLATE = app
 
 SOURCES += main.cpp\
         mainwindow.cpp \
-    settings.cpp
+    settings.cpp \
+    gitmanager.cpp \
+    branchbuilder.cpp
 
 HEADERS  += mainwindow.h \
-    settings.h
+    settings.h \
+    gitmanager.h \
+    branchbuilder.h
 
 FORMS    += mainwindow.ui
