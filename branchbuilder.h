@@ -21,6 +21,7 @@ class BranchBuilder
     bool copyLinkerFiles();
     bool copyPaternFiles();
     bool delTemplateDir();
+    bool copyFileRecursively(const QString &fName, const QString &destDir);
 public:
     BranchBuilder(const QString &inpDir, const QString &outDir, const QString &brName);
     bool createBuild(QString &result);
