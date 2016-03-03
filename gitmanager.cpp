@@ -3,12 +3,15 @@
 #include <QDir>
 #include <QProcess>
 #include <QRegExp>
+#include <QDebug>
+#include <QFile>
+#include <QTextStream>
 
 const QString GitManager::cleanRepoString = "nothing";
 
 GitManager::GitManager(const QString &repoPath):repo(repoPath)
 {
-    startPath = QCoreApplication::applicationDirPath();
+    startPath = QDir::currentPath();
 }
 
 void GitManager::goToRepo()
@@ -83,4 +86,25 @@ bool GitManager::goToBranch(const QString &brName)
     p.close();
     if(output.contains("error")) return false;
     return true;
+}
+
+void GitManager::createInfoFile(const QString &repoPath, const QString &fileName)
+{
+    QString startPath = QDir::currentPath();
+    QDir::setCurrent(repoPath);
+    QProcess p;
+    p.setProcessChannelMode(QProcess::MergedChannels);
+    QString cmd = "git log --pretty=\"%h - %cd\" -1";// + fileName;
+    p.start(cmd);
+    p.waitForFinished();
+    QString output(p.readAll());
+    qDebug() << output;
+    p.close();
+    QDir::setCurrent(startPath);
+    QFile file(fileName);
+    if (file.open(QIODevice::WriteOnly)) {
+        QTextStream stream(&file);
+        stream << output;
+        file.close();
+    }
 }

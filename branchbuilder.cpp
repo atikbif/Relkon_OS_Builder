@@ -1,6 +1,9 @@
 #include "branchbuilder.h"
 #include <QFileInfo>
 #include <QFile>
+#include "rcompiler.h"
+#include <QXmlStreamWriter>
+#include <QStringList>
 
 const QString BranchBuilder::tmpDirName = "tmpBuild";
 
@@ -20,7 +23,9 @@ bool BranchBuilder::copySourceFileToTemplateDir()
 
 bool BranchBuilder::build()
 {
-    return true;
+    RCompiler compiler(coreDir.absolutePath() + "/" + tmpDirName, objDir.absolutePath());
+    connect(&compiler,SIGNAL(compileMessage(QString)),this,SIGNAL(sendMessage(QString)));
+    return compiler.compile();
 }
 
 bool BranchBuilder::copyHeaderFiles()
@@ -92,18 +97,52 @@ bool BranchBuilder::copyFileRecursively(const QString &fPath, const QString &des
     return true;
 }
 
-BranchBuilder::BranchBuilder(const QString &inpDir, const QString &outDir, const QString &brName):
-    inpPath(inpDir), outPath(outDir)
+bool BranchBuilder::createPLCFile(const QHash<QString, QString> &plc, const QString &pathDir)
+{
+    QXmlStreamWriter xmlWriter;
+
+    xmlWriter.setAutoFormatting(true);
+    QFile file(pathDir + "/core/controllers.xml");
+
+    QStringList controller;
+    controller = plc.keys();
+    controller.sort();
+
+    if (!file.open(QIODevice::WriteOnly)) {return false;}
+    else
+    {
+        xmlWriter.setDevice(&file);
+
+        /* Writes a document start with the XML version number. */
+        xmlWriter.writeStartDocument();
+        xmlWriter.writeStartElement("controllers");
+
+        foreach (QString c, controller) {
+           xmlWriter.writeStartElement("plc");
+           xmlWriter.writeAttribute("name",c);
+           xmlWriter.writeAttribute("build",plc.value(c));
+           xmlWriter.writeEndElement();
+        }
+
+        xmlWriter.writeEndElement();
+        xmlWriter.writeEndDocument();
+    }
+    return true;
+}
+
+BranchBuilder::BranchBuilder(const QString &inpDir, const QString &outDir, const QString &brName, QObject *parent):
+    QObject(parent), inpPath(inpDir), outPath(outDir)
 {
     coreDir.setPath(outDir + "/core");
-    coreDir.removeRecursively();
     if(!coreDir.exists()) coreDir.mkdir(".");
 
     branchDir.setPath(coreDir.absolutePath() + "/" + brName);
     if(!branchDir.exists()) branchDir.mkdir(".");
     objDir.setPath(branchDir.absolutePath() + "/obj");
+    objDir.removeRecursively();
     if(!objDir.exists()) objDir.mkdir(".");
     sourceDir.setPath(branchDir.absolutePath() + "/src");
+    sourceDir.removeRecursively();
     if(!sourceDir.exists()) sourceDir.mkdir(".");
 }
 
@@ -119,3 +158,4 @@ bool BranchBuilder::createBuild(QString &result)
     if(!delTemplateDir()) {result = "Cannot delete the template directory";return false;}
     return true;
 }
+

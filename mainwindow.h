@@ -12,6 +12,7 @@ class MainWindow : public QMainWindow
 {
     Q_OBJECT
     void updateGUI(const Settings &conf);
+    void updateLog(const QString &message, bool avr = false);
 public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
@@ -34,6 +35,8 @@ private slots:
     void on_pushButtonEditPLC_clicked();
 
     void on_pushButtonBuildAll_clicked();
+
+    void printMessage(const QString &message);
 
 private:
     Ui::MainWindow *ui;

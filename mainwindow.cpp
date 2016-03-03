@@ -7,6 +7,7 @@
 #include <QDialogButtonBox>
 #include <QMessageBox>
 #include <QComboBox>
+#include <QColor>
 
 #include "gitmanager.h"
 #include "branchbuilder.h"
@@ -33,6 +34,15 @@ void MainWindow::updateGUI(const Settings &conf)
         ui->tableWidgetPLC->setItem(i,1,itemBranch);
         i++;
     }
+    ui->tableWidgetPLC->sortByColumn(0,Qt::AscendingOrder);
+}
+
+void MainWindow::updateLog(const QString &message, bool avr)
+{
+    if(avr) ui->textBrowserLog->setTextColor(Qt::red);
+    ui->textBrowserLog->insertPlainText(message);
+    ui->textBrowserLog->setTextColor(Qt::darkGreen);
+    ui->textBrowserLog->repaint();
 }
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -284,50 +294,65 @@ void MainWindow::on_pushButtonBuildAll_clicked()
     GitManager git(ui->lineEditInpPath->text());
     git.goToRepo();
     if(git.isRepoClean()) {
-        ui->textBrowserLog->insertPlainText("The repository is clean\n\n");
+        updateLog("The repository is clean\n\n");
         QStringList branches = git.getBranches();
-        ui->textBrowserLog->insertPlainText("branches:\n");
+        updateLog("branches:\n");
         foreach (QString branch, branches) {
-            ui->textBrowserLog->insertPlainText("   " + branch + "\n");
+            updateLog("   " + branch + "\n");
         }
         QString startRepo = git.getCurrentBranch();
-        ui->textBrowserLog->insertPlainText("Current branch: " + startRepo + "\n\n");
+        updateLog("Current branch: " + startRepo + "\n\n");
         int brCount = ui->listWidgetBuild->count();
         for(int i=0; i<brCount; i++) {
-            ui->textBrowserLog->insertPlainText("---\n");
+            updateLog("---\n");
             QString br = ui->listWidgetBuild->item(i)->text();
             if(git.goToBranch(br)) {
-                ui->textBrowserLog->insertPlainText("Switched to branch " + br + "\n");
+                updateLog("Switched to branch " + br + "\n");
 
                 BranchBuilder builder(ui->lineEditInpPath->text(),
                                       ui->lineEditOutPath->text(), br);
+                connect(&builder,SIGNAL(sendMessage(QString)),this,SLOT(printMessage(QString)));
                 QString res;
                 if(!builder.createBuild(res)) {
-                    ui->textBrowserLog->setTextColor(Qt::red);
-                    ui->textBrowserLog->insertPlainText(res + "\n");
-                    ui->textBrowserLog->setTextColor(Qt::darkGreen);
+                    updateLog(res + "\n",true);
                 }else {
-                    ui->textBrowserLog->insertPlainText("Compile is complete\n");
+                    updateLog("Compile is complete\n");
                 }
             }else {
-                ui->textBrowserLog->setTextColor(Qt::red);
-                ui->textBrowserLog->insertPlainText("Error! Cannot switch to branch " + br + "\n");
-                ui->textBrowserLog->setTextColor(Qt::darkGreen);
+                updateLog("Error! Cannot switch to branch " + br + "\n", true);
             }
-            ui->textBrowserLog->insertPlainText("---\n");
+            updateLog("---\n");
         }
-        ui->textBrowserLog->insertPlainText("\n");
+        updateLog("\n");
         if(git.goToBranch(startRepo)) {
-            ui->textBrowserLog->insertPlainText("Switched to start branch " + startRepo + "\n");
-        }else {
-            ui->textBrowserLog->setTextColor(Qt::red);
-            ui->textBrowserLog->insertPlainText("Error! Cannot switch to start branch " + startRepo + "\n");
-            ui->textBrowserLog->setTextColor(Qt::darkGreen);
-        }
+            updateLog("Switched to start branch " + startRepo + "\n");
+            QHash<QString, QString> plc;
+            for(int i=0;i<ui->tableWidgetPLC->rowCount();i++) {
+                QString name = ui->tableWidgetPLC->item(i,0)->text();
+                QString build = ui->tableWidgetPLC->item(i,1)->text();
+                plc.insert(name,build);
+            }
+            if(BranchBuilder::createPLCFile(plc, ui->lineEditOutPath->text())) {
+                updateLog("PLC file was created successfully\n");
 
+                GitManager::createInfoFile(ui->lineEditInpPath->text(), ui->lineEditOutPath->text() + "/core/info.txt");
+            }else {
+                updateLog("Error! Cannot create plc file\n", true);
+            }
+        }else {
+            updateLog("Error! Cannot switch to start branch " + startRepo + "\n", true);
+        }
     }else {
-        ui->textBrowserLog->setTextColor(Qt::red);
-        ui->textBrowserLog->insertPlainText("You should clean the repository (git stash)");
-        ui->textBrowserLog->setTextColor(Qt::darkGreen);
+        updateLog("You should clean the repository (git stash)", true);
     }
+}
+
+void MainWindow::printMessage(const QString &message)
+{
+    QColor color = ui->textBrowserLog->textColor();
+    ui->textBrowserLog->setTextColor(Qt::darkYellow);
+    ui->textBrowserLog->insertPlainText(message + "\n");
+    ui->textBrowserLog->setTextColor(color);
+    ui->textBrowserLog->moveCursor(QTextCursor::End);
+    ui->textBrowserLog->repaint();
 }

@@ -17,6 +17,7 @@ public:
     QStringList getBranches(void);
     QString getCurrentBranch(void);
     bool goToBranch(const QString& brName);
+    static void createInfoFile(const QString &repoPath, const QString &fileName);
 };
 
 #endif // GITMANAGER_H
